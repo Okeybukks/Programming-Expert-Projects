@@ -6,9 +6,6 @@ for i in range(1000):
         dict1 = json.load(f)
         class_dict[i] = dict1
 
-# print(class_dict)
-# print("\n\n")
-
 def student_average_func(student):
     subjects = ["math", "science", "history", "english", "geography"]
     scores = [student[subject] for subject in subjects]
@@ -110,8 +107,6 @@ def class_average(students):
     class_avg = sum(students_avg_score)/len(students_avg_score)
 
     return round(class_avg, 2)
-
-
 
 print(f"Average Student Grade: {class_average(class_dict)}")
 print(f"Hardest Subject: {subject_average(class_dict)[0]}")
