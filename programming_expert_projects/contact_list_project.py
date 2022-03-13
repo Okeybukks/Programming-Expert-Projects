@@ -24,16 +24,17 @@ def email_checker(email):
     
     return test
 
-def contact_details(fname, lname, mnumber, hnumber, email, address):
-    with open("contacts.json", "r") as f:
+
+with open("contacts.json", "r") as f:
         contacts = json.load(f)
-    contacts[f"{fname.capitalize()} {lname.capitalize()}"] =[{
-                "First_Name": fname, 
-                "Last_Name": lname,
+
+def contact_details(fname, lname, mnumber, hnumber, email, address):
+    
+    contacts[f"{fname.capitalize()} {lname.capitalize()}"] ={
                 "Email_address": email,
-                "Mobile_number": mnumber,
+                "Mobile_number": num_formater(mnumber),
                 "Home_number": hnumber,
-                "Home_address": address,}]
+                "Home_address": address,}
     with open("contacts.json", "w") as f:
         json.dump(contacts, f)
 
@@ -53,8 +54,6 @@ def contact_details(fname, lname, mnumber, hnumber, email, address):
 
 
 def add_contact():
-    with open("contacts.json", "r") as f:
-        contacts = json.load(f)
 
     first_name = input("First Name: ").capitalize()
     while first_name == "":
@@ -63,13 +62,13 @@ def add_contact():
     while last_name == "":
         last_name = input("Last name can't be blank, please input name: ").capitalize()
     mobile_number = input("Mobile Phone Number: ")
-    while num_checker(mobile_number) != True:
+    while num_checker(mobile_number) != True or mobile_number == "":
          mobile_number = input("Input valid Mobile number.: ")
     home_number = input("Home Phone Number: ")
     while num_checker(home_number) != True:
          home_number = input("Input valid Home number.: ")
     email_address = input("Email Address: ").lower()
-    while email_checker(email_address) != True:
+    while email_checker(email_address) != True or email_address == "":
         email_address = input("Input valid email address.: ").lower()
     address = input("Address: ").lower()
 
@@ -88,8 +87,6 @@ def add_contact():
             print("Contact Added!")
 
 def delete_contact(first_name, last_name):
-    with open("contacts.json", "r") as f:
-        contacts = json.load(f)
 
     for contact in contacts.keys():
         if first_name in contact and last_name in contact:
@@ -103,7 +100,15 @@ def delete_contact(first_name, last_name):
         else:
             print("No contact with this name exists.")
 
-add_contact()
+
+
+def contact_list():
+    for index, contact in enumerate(contacts):
+        number = contacts[contact]["Mobile_number"]
+        email = contacts[contact]["Email_address"]
+        print(f"{index}. {contact}\n\t Mobile: {number}\n\t Email: {email}")
+        
+    
 
 
 
