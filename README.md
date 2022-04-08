@@ -2,4 +2,4 @@
 
 A readme file
 
-##A readme update
+##This repo contains projects after the python programming course.
