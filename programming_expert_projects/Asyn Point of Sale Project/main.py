@@ -1,20 +1,21 @@
 import asyncio
-import time
 from samp_inventory import Inventory
+
 
 inventory = Inventory()
 catalogue = inventory.catalogue
 
 
 def combo(cart):
-    burger = {x: y for x, y in cart.items() if "Burger" in x}
-    burger_sorted = dict(sorted(burger.items(), key=lambda x: x[1], reverse=True))
-    sides = {x: y for x, y in cart.items() if "Fries" in x or "Salad" in x}
-    sides_sorted = dict(sorted(sides.items(), key=lambda x: x[1], reverse=True))
-    drinks = {x: y for x, y in cart.items() if "Coke" in x or "Ale" in x or "Milk" in x}
-    drinks_sorted = dict(sorted(drinks.items(), key=lambda x: x[1], reverse=True))
 
-    zipped = zip(burger_sorted.items(), sides_sorted.items(), drinks_sorted.items())
+    burger = [x for x in cart if "Burger" in x[0]]
+    burger_sorted = sorted(burger, key=lambda x: x[1], reverse=True)
+    sides = [x for x in cart if "Fries" in x[0] or "Salad" in x[0]]
+    sides_sorted = sorted(sides, key=lambda x: x[1], reverse=True)
+    drinks = [x for x in cart if "Coke" in x[0] or "Ale" in x[0] or "Milk" in x[0]]
+    drinks_sorted = sorted(drinks, key=lambda x: x[1], reverse=True)
+
+    zipped = zip(burger_sorted, sides_sorted, drinks_sorted)
     combo_list = []
     for i in zipped:
         combo_list.append(dict(i))
@@ -24,11 +25,12 @@ def combo(cart):
 
 def not_combo(cart):
     combo_list = combo(cart)
-    d = [item for combo in range(len(combo_list)) for item in combo_list[combo]]
-    single_items = {}
-    for key, value in cart.items():
-        if key not in d:
-            single_items[key] = value
+    combo_list = [x for y in combo_list for x in y.items()]
+    for item in combo_list:
+        if item in cart:
+            cart.remove(item)
+
+    single_items = cart
 
     return single_items
 
@@ -136,6 +138,24 @@ async def display_catalogue(catalogue):
         if repeat_order_bool == False:
             break
 
+
+async def item_getter(inventory, item_id):
+    stock, item = await asyncio.gather(
+        inventory.stock_return_value(item_id),
+        inventory.get_item(item_id),
+    )
+
+    if stock == 0:
+        return False, item_id
+
+    success = await inventory.decrement_stock(item_id)
+
+    if not success:
+        return False, item_id
+
+    return True, item
+
+
 async def welcome_func(inventory):
     ordered = []
 
@@ -153,35 +173,36 @@ async def welcome_func(inventory):
                 break
 
         item_id = int(item_id)
-        ordered.append(item_id)
+        add_to_order_task = asyncio.create_task(item_getter(inventory, item_id))
+        ordered.append(add_to_order_task)
 
-    start_time = time.time()
-    order = await order_func(inventory, ordered)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    order = await order_func(ordered)
 
     return order
 
 
-async def order_func(inventory_class, ordered):
-    cart_dict = {}
+async def order_func(ordered):
+    cart_dict = []
     print("Placing order...")
-    for item_id in ordered:
-        task1 = await asyncio.gather(
-            inventory_class.stock_return_value(item_id),
-            inventory_class.decrement_stock(item_id),
-        )
-        if all(task1):
-            task2 = await asyncio.create_task(inventory_class.get_item(item_id))
-            item_name, item_price = task2["name"], task2["price"]
-            cart_dict[item_name] = item_price
+    for task in ordered:
+        stock, item = await task
 
+        if stock == True:
+            item_id = item["id"]
+            item_name, item_price = item["name"], item["price"]
+            cart_dict.append((item_name, item_price))
+        else:
+            item_id = item
+            print(
+                f"Unfortunately item number {item_id} is out of stock and has been removed from your order. Sorry!"
+            )
+    # print(cart_dict)
     print("Here is a summary of your order:")
     print("\n")
 
-    
     combo_list = combo(cart_dict)
     not_combo_list = not_combo(cart_dict)
-    not_combo_price = round(sum(not_combo_list.values()), 2)
+    not_combo_price = round(sum([item[1] for item in not_combo_list]), 2)
     combo_prices = []
 
     if len(combo_list) == 0:
@@ -195,8 +216,8 @@ async def order_func(inventory_class, ordered):
             for item in combo_item.keys():
                 print(f"\t{item}")
 
-    for item, price in not_combo_list.items():
-        print(f"${price} {item}")
+    for item in not_combo_list:
+        print(f"${item[1]} {item[0]}")
 
     subtotal_price = round(sum(combo_prices) + not_combo_price, 2)
     tax = round(subtotal_price * 0.05, 2)
@@ -216,4 +237,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
