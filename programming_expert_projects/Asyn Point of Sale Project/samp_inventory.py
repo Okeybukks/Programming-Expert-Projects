@@ -44,6 +44,7 @@ class Inventory:
         }
         self._item_dict()
         self.stock = {i + 1: random.randint(1, 20) for i in range(len(self.items))}
+        self.stock_lock = asyncio.Lock()
 
     def _item_dict(self):
         self.items = {}
@@ -86,7 +87,7 @@ class Inventory:
 
     @_verify_id
     async def get_stock(self, item_id):
-        await asyncio.sleep(1)
+        await asyncio.sleep(2)
 
         return self.stock[item_id]
 
@@ -95,9 +96,10 @@ class Inventory:
         if self.stock[item_id] == 0:
             return False
 
-        self.stock[item_id] -= 1
-        return True
-
+        async with self.stock_lock:
+            self.stock[item_id] -= 1
+            return True
+        
     @_verify_id
     async def get_item(self, item_id):
         await asyncio.sleep(1)
@@ -111,15 +113,55 @@ class Inventory:
         return True
 
 
+
 i = Inventory()
 # print(i.stock)
 
+async def item_getter(i, item_id):
+    stock, item = await asyncio.gather(
+            i.stock_return_value(item_id),
+            i.get_item(item_id),
+        )
+
+    if stock == 0:
+        return False, item_id
+
+    success = await i.decrement_stock(item_id)
+
+    if not success:
+        return False, item_id
+
+    return True, item
 
 async def main():
     # pass
-    task = await asyncio.gather(i.get_stock(2), i.decrement_stock(2), i.get_stock(2))
-    print(task)
+    num_items = len(i.stock)
+    cart_dict = {}
+    t = []
+    t2 = []
+    while True:
+        item_id = input("Enter an item number: ")
+        if item_id == "q":
+            break
 
+        if not item_id.isdigit():
+            print("Please enter a valid number.")
+            continue
+
+        item_id = int(item_id)
+        if item_id > num_items:
+            print(f"Please enter a number below {num_items + 1}.")
+            continue
+
+        add_to_order_task = asyncio.create_task(item_getter(i, item_id))
+        t.append(add_to_order_task)
+
+    for task in t:
+        stock, item = await task
+        if stock == True:
+            print(item)
+        print("No item")
+     
 
 if __name__ == "__main__":
     asyncio.run(main())

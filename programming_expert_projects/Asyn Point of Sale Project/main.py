@@ -1,5 +1,5 @@
 import asyncio
-from pickletools import markobject, optimize
+import time
 from samp_inventory import Inventory
 
 inventory = Inventory()
@@ -136,7 +136,6 @@ async def display_catalogue(catalogue):
         if repeat_order_bool == False:
             break
 
-
 async def welcome_func(inventory):
     ordered = []
 
@@ -156,7 +155,10 @@ async def welcome_func(inventory):
         item_id = int(item_id)
         ordered.append(item_id)
 
+    start_time = time.time()
     order = await order_func(inventory, ordered)
+    print("--- %s seconds ---" % (time.time() - start_time))
+
     return order
 
 
@@ -170,12 +172,13 @@ async def order_func(inventory_class, ordered):
         )
         if all(task1):
             task2 = await asyncio.create_task(inventory_class.get_item(item_id))
-            print(task2)
             item_name, item_price = task2["name"], task2["price"]
             cart_dict[item_name] = item_price
 
     print("Here is a summary of your order:")
     print("\n")
+
+    
     combo_list = combo(cart_dict)
     not_combo_list = not_combo(cart_dict)
     not_combo_price = round(sum(not_combo_list.values()), 2)
